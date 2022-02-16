@@ -20,12 +20,12 @@ This library is a remote version of Windows API libloaderapi.h
 * [RemoveDllDirectory](https://docs.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-removedlldirectory)
 * [SetDefaultDllDirectories](https://docs.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-setdefaultdlldirectories)
 
-# Remote version function implementation list in System Services Functions of libloaderapi.h
+## Remote version function implementation list in System Services Functions of libloaderapi.h
 * GetModuleHandleA -> GetRemoteModuleHandleA
 * GetModuleHandleW -> GetRemoteModuleHandleW
 * GetModuleFileNameA -> GetRemoteModuleFileNameA
 * GetModuleFileNameW -> GetRemoteModuleFileNameW
 * GetProcAddress -> GetRemoteProcAddress`
 
-# Other new implementation functions
+## Other new implementation functions
 * NtCurrentPeb -> GetRemotePeb
