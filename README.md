@@ -35,7 +35,7 @@ gcc options '-lntdll' is link options for ntdll.lib library
 * GetModuleHandleW -> GetRemoteModuleHandleW
 * GetModuleFileNameA -> GetRemoteModuleFileNameA
 * GetModuleFileNameW -> GetRemoteModuleFileNameW
-* GetProcAddress -> GetRemoteProcAddress`
+* GetProcAddress -> GetRemoteProcAddress
 
 ## Other new implementation functions
 * NtCurrentPeb -> GetRemotePeb
