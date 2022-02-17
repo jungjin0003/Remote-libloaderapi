@@ -38,4 +38,4 @@ gcc options '-lntdll' is link options for ntdll.lib library
 * GetProcAddress -> GetRemoteProcAddress
 
 ## Other new implementation functions
-* NtCurrentPeb -> GetRemotePeb
+* RtlGetCurrentPeb -> GetRemotePeb
