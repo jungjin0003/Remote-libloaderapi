@@ -43,8 +43,8 @@ HMODULE GetRemoteModuleHandleA(HANDLE ProcessHandle, LPCSTR lpModuleName);
 HMODULE GetRemoteModuleHandleW(HANDLE ProcessHandle, LPCWSTR lpModuleName);
 DWORD GetRemoteModuleFileNameA(HANDLE ProcessHandle, HMODULE hModule, LPSTR lpFilename, DWORD nSize);
 DWORD GetRemoteModuleFileNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
-DWORD GetRemoteModuleFileBaseNameA(HANDLE ProcessHandle, HMODULE hModule, LPSTR lpFilename, DWORD nSize);
-DWORD GetRemoteModuleFileBaseNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
+DWORD GetRemoteModuleBaseNameA(HANDLE ProcessHandle, HMODULE hModule, LPSTR lpFilename, DWORD nSize);
+DWORD GetRemoteModuleBaseNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
 FARPROC GetRemoteProcAddress(HANDLE ProcessHandle, HMODULE hModule, LPCSTR lpProcName);
 
 #endif
