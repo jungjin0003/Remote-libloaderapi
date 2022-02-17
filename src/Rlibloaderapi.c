@@ -245,17 +245,17 @@ DWORD GetRemoteModuleFileNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpF
     return Size;
 }
 
-DWORD GetRemoteModuleFileBaseNameA(HANDLE ProcessHandle, HMODULE hModule, LPSTR lpFilename, DWORD nSize)
+DWORD GetRemoteModuleBaseNameA(HANDLE ProcessHandle, HMODULE hModule, LPSTR lpFilename, DWORD nSize)
 {
     ZeroMemory(lpFilename, nSize);
     wchar_t Filename[MAX_PATH];
-    DWORD Size = GetRemoteModuleFileBaseNameW(ProcessHandle, hModule, Filename, MAX_PATH);
+    DWORD Size = GetRemoteModuleBaseNameW(ProcessHandle, hModule, Filename, MAX_PATH);
     int FilenameLength = WideCharToMultiByte(CP_ACP, 0, Filename, -1, NULL, 0, NULL, NULL);
     WideCharToMultiByte(CP_ACP, 0, Filename, -1, lpFilename, FilenameLength <= nSize ? FilenameLength : nSize, NULL, NULL);
     return FilenameLength <= nSize ? FilenameLength : nSize;
 }
 
-DWORD GetRemoteModuleFileBaseNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize)
+DWORD GetRemoteModuleBaseNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize)
 {
 #ifdef _WIN64
     BOOL bWow64Process;
