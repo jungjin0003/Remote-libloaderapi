@@ -20,6 +20,7 @@
 #define LdrDataTableEntry_BaseDllName32 0x2C
 #define LdrDataTableEntry_BaseDllName64 0x58
 #define IFREE(HeapBase)                 (RtlFreeHeap(_get_heap_handle(), 0, (HeapBase)) || 1)
+#define TERNARY(Condition, True, False) (Condition ? True : False)
 
 #pragma pack(push, 4)
 typedef struct _UNICODE_STRING32
@@ -45,6 +46,7 @@ DWORD GetRemoteModuleFileNameA(HANDLE ProcessHandle, HMODULE hModule, LPSTR lpFi
 DWORD GetRemoteModuleFileNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
 DWORD GetRemoteModuleBaseNameA(HANDLE ProcessHandle, HMODULE hModule, LPSTR lpFilename, DWORD nSize);
 DWORD GetRemoteModuleBaseNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize);
+DWORD GetRemoteModuleName(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize, BOOL bBaseName);
 FARPROC GetRemoteProcAddress(HANDLE ProcessHandle, HMODULE hModule, LPCSTR lpProcName);
 
 #endif

@@ -124,7 +124,7 @@ HMODULE GetRemoteModuleHandleW(HANDLE ProcessHandle, LPCWSTR lpModuleName)
 #endif
                 &hModule, 
                 SizeOfPointer, // sizeof(HMODULE), 
-                NULL) == FALSE && (RtlFreeHeap(_get_heap_handle(), 0, ModuleName) || TRUE))
+                NULL) == FALSE && IFREE(ModuleName))
             return hModule;
 
         free(ModuleName);
@@ -147,102 +147,7 @@ DWORD GetRemoteModuleFileNameA(HANDLE ProcessHandle, HMODULE hModule, LPSTR lpFi
 
 DWORD GetRemoteModuleFileNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize)
 {
-#ifdef _WIN64
-    BOOL bWow64Process;
-    IsWow64Process(ProcessHandle, &bWow64Process);
-    size_t SizeOfPointer = bWow64Process ? 4 : 8;
-#else
-    size_t SizeOfPointer = 4;
-#endif
-    nSize -= 2;
-    DWORD Size = 0;
-    PVOID PebBaseAddress = GetRemotePeb(ProcessHandle);
-
-    if (PebBaseAddress == NULL)
-        return Size;
-
-    PVOID PebLdrData = NULL;
-
-    if (ReadProcessMemory(ProcessHandle, 
-#ifdef _WIN64
-            (ULONG_PTR)PebBaseAddress + (bWow64Process ? Peb_LdrOffset32 : Peb_LdrOffset64), 
-#else
-            (ULONG_PTR)PebBaseAddress + Peb_LdrOffset32,
-#endif
-            &PebLdrData, 
-            SizeOfPointer, 
-            NULL) == FALSE)
-        return hModule;
-
-#ifdef _WIN64
-    PVOID LdrDataTableEntry = (ULONG_PTR)PebLdrData + (bWow64Process ? PebLdrData_LOMLOffset32 : PebLdrData_LOMLOffset64);
-#else
-    PVOID LdrDataTableEntry = (ULONG_PTR)PebLdrData + PebLdrData_LOMLOffset32;
-#endif
-
-    for (; ReadProcessMemory(ProcessHandle, LdrDataTableEntry, &LdrDataTableEntry, SizeOfPointer, NULL) 
-            && 
-#ifdef _WIN64
-            (ULONG_PTR)PebLdrData + (bWow64Process ? PebLdrData_LOMLOffset32 : PebLdrData_LOMLOffset64) != LdrDataTableEntry
-#else
-            (ULONG_PTR)PebLdrData + PebLdrData_LOMLOffset32 != LdrDataTableEntry
-#endif
-        ;)
-    {
-        PVOID DllBase;
-
-        if (ReadProcessMemory(ProcessHandle, 
-#ifdef _WIN64
-                (ULONG_PTR)LdrDataTableEntry + (bWow64Process ? LdrDataTableEntry_DllBase32 : LdrDataTableEntry_DllBase64),
-#else
-                (ULONG_PTR)LdrDataTableEntry + LdrDataTableEntry_DllBase32, 
-#endif
-                &DllBase, 
-                SizeOfPointer, 
-                NULL) == FALSE)
-            return Size;
-        
-        if (DllBase != hModule)
-            continue;
-
-#ifdef _WIN64
-        size_t SizeOfUnicodeString = bWow64Process ? sizeof(UNICODE_STRING32) : sizeof(UNICODE_STRING64);
-#else
-        size_t SizeOfUnicodeString = sizeof(UNICODE_STRING);
-#endif
-        BYTE *UnicodeString = calloc(1, SizeOfUnicodeString);
-
-        if (ReadProcessMemory(ProcessHandle, 
-#ifdef _WIN64
-                (ULONG_PTR)LdrDataTableEntry + (bWow64Process ? LdrDatatableEntry_FullDllName32 : LdrDatatableEntry_FullDllName64), 
-#else
-                (ULONG_PTR)LdrDataTableEntry + LdrDatatableEntry_FullDllName32, 
-#endif
-                UnicodeString, 
-                SizeOfUnicodeString, 
-                NULL) == FALSE)
-            return Size;
-
-        ZeroMemory(lpFilename, nSize + 2);
-
-        if (ReadProcessMemory(ProcessHandle, 
-#ifdef _WIN64
-                bWow64Process ? ((UNICODE_STRING32 *)UnicodeString)->Buffer : ((UNICODE_STRING64 *)UnicodeString)->Buffer, 
-                lpFilename, 
-                bWow64Process ? ((UNICODE_STRING32 *)UnicodeString)->Length <= nSize ? ((UNICODE_STRING32 *)UnicodeString)->Length : nSize : ((UNICODE_STRING64 *)UnicodeString)->Length <= nSize ? ((UNICODE_STRING64 *)UnicodeString)->Length : nSize, // UnicodeString.Length <= nSize ? UnicodeString.Length : nSize, 
-#else
-                ((UNICODE_STRING *)UnicodeString)->Buffer,
-                lpFilename,
-                ((UNICDOE_STRING *)UnicodeString)->Length <= nSize ? ((UNICDOE_STRING *)UnicodeString)->Length : nSize,
-#endif
-                &Size) == FALSE && (RtlFreeHeap(_get_heap_handle(), 0, UnicodeString) || 1))
-            return Size;
-
-        free(UnicodeString);
-        break;
-    }
-
-    return Size;
+    return GetRemoteModuleName(ProcessHandle, hModule, lpFilename, nSize, FALSE);
 }
 
 DWORD GetRemoteModuleBaseNameA(HANDLE ProcessHandle, HMODULE hModule, LPSTR lpFilename, DWORD nSize)
@@ -257,12 +162,19 @@ DWORD GetRemoteModuleBaseNameA(HANDLE ProcessHandle, HMODULE hModule, LPSTR lpFi
 
 DWORD GetRemoteModuleBaseNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize)
 {
+    return GetRemoteModuleName(ProcessHandle, hModule, lpFilename, nSize, TRUE);
+}
+
+DWORD GetRemoteModuleName(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilename, DWORD nSize, BOOL bBaseName)
+{
 #ifdef _WIN64
     BOOL bWow64Process;
     IsWow64Process(ProcessHandle, &bWow64Process);
     size_t SizeOfPointer = bWow64Process ? 4 : 8;
+    size_t NameOffset = TERNARY(bBaseName, TERNARY(bWow64Process, LdrDataTableEntry_BaseDllName32, LdrDataTableEntry_BaseDllName64), TERNARY(bWow64Process, LdrDatatableEntry_FullDllName32, LdrDatatableEntry_FullDllName64));
 #else
     size_t SizeOfPointer = 4;
+    size_t NameOffset = TERNARY(bBaseName, LdrDataTableEntry_BaseDllName32, LdrDatatableEntry_FullDllName32);
 #endif
     nSize -= 2;
     DWORD Size = 0;
@@ -323,11 +235,7 @@ DWORD GetRemoteModuleBaseNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpF
         BYTE *UnicodeString = calloc(1, SizeOfUnicodeString);
 
         if (ReadProcessMemory(ProcessHandle, 
-#ifdef _WIN64
-                (ULONG_PTR)LdrDataTableEntry + (bWow64Process ? LdrDataTableEntry_BaseDllName32 : LdrDataTableEntry_BaseDllName64), 
-#else
-                (ULONG_PTR)LdrDataTableEntry + LdrDataTableEntry_BaseDllName32, 
-#endif
+                (ULONG_PTR)LdrDataTableEntry + NameOffset, 
                 UnicodeString, 
                 SizeOfUnicodeString, 
                 NULL) == FALSE)
@@ -339,13 +247,13 @@ DWORD GetRemoteModuleBaseNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpF
 #ifdef _WIN64
                 bWow64Process ? ((UNICODE_STRING32 *)UnicodeString)->Buffer : ((UNICODE_STRING64 *)UnicodeString)->Buffer, 
                 lpFilename, 
-                bWow64Process ? ((UNICODE_STRING32 *)UnicodeString)->Length <= nSize ? ((UNICODE_STRING32 *)UnicodeString)->Length : nSize : ((UNICODE_STRING64 *)UnicodeString)->Length <= nSize ? ((UNICODE_STRING64 *)UnicodeString)->Length : nSize, // UnicodeString.Length <= nSize ? UnicodeString.Length : nSize, 
+                bWow64Process ? ((UNICODE_STRING32 *)UnicodeString)->Length <= nSize ? ((UNICODE_STRING32 *)UnicodeString)->Length : nSize : ((UNICODE_STRING64 *)UnicodeString)->Length <= nSize ? ((UNICODE_STRING64 *)UnicodeString)->Length : nSize, 
 #else
                 ((UNICODE_STRING *)UnicodeString)->Buffer,
                 lpFilename,
                 ((UNICDOE_STRING *)UnicodeString)->Length <= nSize ? ((UNICDOE_STRING *)UnicodeString)->Length : nSize,
 #endif
-                &Size) == FALSE && (RtlFreeHeap(_get_heap_handle(), 0, UnicodeString) || 1))
+                &Size) == FALSE && IFREE(UnicodeString))
             return Size;
 
         free(UnicodeString);
@@ -354,127 +262,7 @@ DWORD GetRemoteModuleBaseNameW(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpF
 
     return Size;
 }
-/*
-ULONG32 GetRemoteProcAddress32(HANDLE ProcessHandle, HMODULE hModule, LPCSTR lpProcName)
-{
-    ULONG32 Proc = NULL;
-    ULONG_PTR ImageBase = hModule;
-    IMAGE_DOS_HEADER DOS;
 
-    if (ReadProcessMemory(ProcessHandle, hModule, &DOS, sizeof(IMAGE_DOS_HEADER), NULL) == FALSE)
-        return Proc;
-
-    IMAGE_NT_HEADERS32 NT;
-
-    if (ReadProcessMemory(ProcessHandle, ImageBase + DOS.e_lfanew, &NT, sizeof(IMAGE_NT_HEADERS32), NULL) == FALSE)
-        return Proc;
-
-    if (NT.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress == NULL)
-        return Proc;
-
-    IMAGE_EXPORT_DIRECTORY EXPORT;
-
-    if (ReadProcessMemory(ProcessHandle, ImageBase + NT.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress, &EXPORT, sizeof(IMAGE_EXPORT_DIRECTORY), NULL) == FALSE)
-        return Proc;
-
-    for (DWORD i = 0; i < EXPORT.NumberOfNames; i++)
-    {
-        ULONG64 FunctionName = 0;
-        char ch;
-
-        if (ReadProcessMemory(ProcessHandle, ImageBase + EXPORT.AddressOfNames + i * 4, &FunctionName, 4, NULL) == FALSE)
-            return Proc;
-        
-        FunctionName += ImageBase;
-
-        for (DWORD j = 0; ReadProcessMemory(ProcessHandle, FunctionName + j, &ch, 1, NULL); j++)
-        {
-            if (ch != *(lpProcName + j))
-                break;
-
-            if (ch == NULL && *(lpProcName + j) == NULL)
-            {
-                WORD Ordinal;
-                if (ReadProcessMemory(ProcessHandle, ImageBase + EXPORT.AddressOfNameOrdinals + i * 2, &Ordinal, sizeof(WORD), NULL) == FALSE)
-                    return Proc;
-
-                if (ReadProcessMemory(ProcessHandle, ImageBase + EXPORT.AddressOfFunctions + Ordinal * 4, &Proc, 4, NULL) == FALSE)
-                    return Proc;
-
-                Proc += ImageBase;
-                break;
-            }
-            else if (ch == NULL || *(lpProcName + j) == NULL)
-                break;
-        }
-
-        if (Proc)
-            break;
-    }
-
-    return Proc;
-}
-
-ULONG64 GetRemoteProcAddress64(HANDLE ProcessHandle, HMODULE hModule, LPCSTR lpProcName)
-{
-    ULONG64 Proc = NULL;
-    ULONG_PTR ImageBase = hModule;
-    IMAGE_DOS_HEADER DOS;
-
-    if (ReadProcessMemory(ProcessHandle, hModule, &DOS, sizeof(IMAGE_DOS_HEADER), NULL) == FALSE)
-        return Proc;
-
-    IMAGE_NT_HEADERS64 NT;
-
-    if (ReadProcessMemory(ProcessHandle, ImageBase + DOS.e_lfanew, &NT, sizeof(IMAGE_NT_HEADERS64), NULL) == FALSE)
-        return Proc;
-
-    if (NT.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress == NULL)
-        return Proc;
-
-    IMAGE_EXPORT_DIRECTORY EXPORT;
-
-    if (ReadProcessMemory(ProcessHandle, ImageBase + NT.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress, &EXPORT, sizeof(IMAGE_EXPORT_DIRECTORY), NULL) == FALSE)
-        return Proc;
-
-    for (DWORD i = 0; i < EXPORT.NumberOfNames; i++)
-    {
-        ULONG64 FunctionName = 0;
-        char ch;
-
-        if (ReadProcessMemory(ProcessHandle, ImageBase + EXPORT.AddressOfNames + i * 4, &FunctionName, 4, NULL) == FALSE)
-            return Proc;
-        
-        FunctionName += ImageBase;
-
-        for (DWORD j = 0; ReadProcessMemory(ProcessHandle, FunctionName + j, &ch, 1, NULL); j++)
-        {
-            if (ch != *(lpProcName + j))
-                break;
-
-            if (ch == NULL && *(lpProcName + j) == NULL)
-            {
-                WORD Ordinal;
-                if (ReadProcessMemory(ProcessHandle, ImageBase + EXPORT.AddressOfNameOrdinals + i * 2, &Ordinal, sizeof(WORD), NULL) == FALSE)
-                    return Proc;
-
-                if (ReadProcessMemory(ProcessHandle, ImageBase + EXPORT.AddressOfFunctions + Ordinal * 4, &Proc, 4, NULL) == FALSE)
-                    return Proc;
-
-                Proc += ImageBase;
-                break;
-            }
-            else if (ch == NULL || *(lpProcName + j) == NULL)
-                break;
-        }
-
-        if (Proc)
-            break;
-    }
-
-    return Proc;
-}
-*/
 FARPROC GetRemoteProcAddress(HANDLE ProcessHandle, HMODULE hModule, LPCSTR lpProcName)
 {
 #ifdef _WIN64
@@ -552,10 +340,10 @@ FARPROC GetRemoteProcAddress(HANDLE ProcessHandle, HMODULE hModule, LPCSTR lpPro
                 if (ReadProcessMemory(ProcessHandle, ImageBase + EXPORT.AddressOfNameOrdinals + i * 2, &Ordinal, sizeof(WORD), NULL) == FALSE)
                     return Proc;
 
-                if (ReadProcessMemory(ProcessHandle, ImageBase + EXPORT.AddressOfFunctions + Ordinal * 4, &Proc, SizeOfPointer, NULL) == FALSE)
+                if (ReadProcessMemory(ProcessHandle, ImageBase + EXPORT.AddressOfFunctions + Ordinal * 4, &Proc, 4, NULL) == FALSE)
                     return Proc;
 
-                Proc += ImageBase;
+                Proc = (ULONG_PTR)Proc + ImageBase;
                 break;
             }
             else if (ch == NULL || *(lpProcName + j) == NULL)
