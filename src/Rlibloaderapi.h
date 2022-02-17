@@ -7,6 +7,8 @@
 #include <windows.h>
 #include <winternl.h>
 
+#pragma comment (lib, "ntdll.lib")
+
 #define Peb_LdrOffset32                 0x0C
 #define Peb_LdrOffset64                 0x18
 #define PebLdrData_LOMLOffset32         0x0C
