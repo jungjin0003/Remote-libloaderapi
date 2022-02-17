@@ -1,6 +1,16 @@
 # Remote-libloaderapi
 This library is a remote version of Windows API libloaderapi.h
 
+# Compilation method for each compilation
+## MSVC
+If you are using Visual Studio, you maybe just need to compile it. Because preprocessing library link was set up in the header
+
+## mingw-gcc (Windows GCC)
+```Shell
+$ gcc main.c Rlibloaderapi.c -o main.exe -lntdll
+```
+gcc options '-lntdll' is link options for ntdll.lib library
+
 # System Services Functions list in libloaderapi.h
 * [AddDllDirectory](https://docs.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-adddlldirectory)
 * [DisableThreadLibraryCalls](https://docs.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-disablethreadlibrarycalls)
