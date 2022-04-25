@@ -9,7 +9,7 @@ If you are using Visual Studio, you maybe just need to compile it. Because prepr
 ```Shell
 $ gcc main.c Rlibloaderapi.c -o main.exe -lntdll
 ```
-gcc options '-lntdll' is link options for ntdll.lib library
+gcc options `-lntdll` is link options for ntdll.lib library
 
 # System Services Functions list in libloaderapi.h
 * [AddDllDirectory](https://docs.microsoft.com/en-us/windows/win32/api/libloaderapi/nf-libloaderapi-adddlldirectory)
