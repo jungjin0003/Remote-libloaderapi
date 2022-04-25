@@ -98,7 +98,7 @@ HMODULE GetRemoteModuleHandleW(HANDLE ProcessHandle, LPCWSTR lpModuleName)
 #ifdef _WIN64
         ModuleName = malloc(bWow64Process ? ((UNICODE_STRING32 *)UnicodeString)->Length + 2 : ((UNICODE_STRING64 *)UnicodeString)->Length + 2);
 #else
-        ModuleName = malloc(sizeof(UNICODE_STRING));
+        ModuleName = malloc(((UNICODE_STRING32 *)UnicodeString)->Length + 2);
 #endif
         if (ReadProcessMemory(ProcessHandle, 
 #ifdef _WIN64
@@ -106,9 +106,9 @@ HMODULE GetRemoteModuleHandleW(HANDLE ProcessHandle, LPCWSTR lpModuleName)
                 ModuleName,
                 bWow64Process ? ((UNICODE_STRING32 *)UnicodeString)->Length + 2 : ((UNICODE_STRING64 *)UnicodeString)->Length + 2,
 #else
-                ((UNICODE_STRING *)UnicodeString)->Buffer,
+                ((UNICODE_STRING32 *)UnicodeString)->Buffer,
                 ModuleName, 
-                ((UNICODE_STRING *)UnicodeString)->Length,
+                ((UNICODE_STRING32 *)UnicodeString)->Length + 2,
 #endif
                 NULL) == FALSE)
             return hModule;
@@ -249,9 +249,9 @@ DWORD GetRemoteModuleName(HANDLE ProcessHandle, HMODULE hModule, LPWSTR lpFilena
                 lpFilename, 
                 bWow64Process ? ((UNICODE_STRING32 *)UnicodeString)->Length <= nSize ? ((UNICODE_STRING32 *)UnicodeString)->Length : nSize : ((UNICODE_STRING64 *)UnicodeString)->Length <= nSize ? ((UNICODE_STRING64 *)UnicodeString)->Length : nSize, 
 #else
-                ((UNICODE_STRING *)UnicodeString)->Buffer,
+                ((UNICODE_STRING32 *)UnicodeString)->Buffer,
                 lpFilename,
-                ((UNICDOE_STRING *)UnicodeString)->Length <= nSize ? ((UNICDOE_STRING *)UnicodeString)->Length : nSize,
+                ((UNICODE_STRING32 *)UnicodeString)->Length <= nSize ? ((UNICODE_STRING32 *)UnicodeString)->Length : nSize,
 #endif
                 &Size) == FALSE && IFREE(UnicodeString))
             return Size;
